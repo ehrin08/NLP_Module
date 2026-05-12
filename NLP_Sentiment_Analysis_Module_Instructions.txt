@@ -1,0 +1,174 @@
+# Instructions for Building the NLP Sentiment Analysis Module
+
+## Module Title
+NLP-Based Sentiment Analysis Module
+
+# 1. Module Overview
+
+The NLP Sentiment Analysis Module is designed to automatically analyze customer feedback, reviews, and comments submitted through the Booking and Spa Management System. The module uses Natural Language Processing (NLP) and supervised Machine Learning techniques to classify customer sentiments into:
+- Positive
+- Neutral
+- Negative
+
+The goal of the module is to help management evaluate customer satisfaction, identify operational concerns, improve service quality, and support data-driven decision-making.
+
+# 2. Functional Objectives
+
+The module must:
+1. Collect customer feedback from completed bookings.
+2. Preprocess textual feedback for NLP analysis.
+3. Classify customer sentiment automatically.
+4. Store prediction results in the database.
+5. Display sentiment analytics in the management dashboard.
+6. Generate visual reports for customer satisfaction trends.
+
+# 3. Recommended Technology Stack
+
+- Backend Framework: Laravel
+- NLP Processing: Python
+- Machine Learning Library: scikit-learn
+- NLP Library: NLTK or spaCy
+- Database: MySQL
+- API Communication: REST API
+- Visualization: Chart.js or Laravel Charts
+
+# 4. System Workflow
+
+## Step 1 — Feedback Collection
+After service completion, customers submit:
+- ratings
+- comments
+- reviews
+- suggestions
+
+Example:
+“The massage service was relaxing and the staff were accommodating.”
+
+## Step 2 — Text Preprocessing
+
+Required NLP preprocessing tasks:
+- Lowercasing
+- Tokenization
+- Stop Word Removal
+- Stemming or Lemmatization
+- Noise Removal
+
+# 5. Feature Extraction
+
+Recommended techniques:
+- TF-IDF Vectorization (Recommended)
+- Bag of Words
+- Word Embeddings (Advanced)
+
+# 6. Machine Learning Model
+
+Recommended Algorithm:
+- Logistic Regression
+
+Alternative Algorithms:
+- Naïve Bayes
+- Support Vector Machine (SVM)
+- Random Forest
+- BERT / DistilBERT
+
+# 7. Dataset Preparation
+
+Required dataset structure:
+
+| Feedback Text | Sentiment Label |
+|----------------|----------------|
+| Excellent service and friendly staff. | Positive |
+| The waiting time was acceptable. | Neutral |
+| Very disappointing experience. | Negative |
+
+Recommended dataset size:
+- Minimum: 500 feedback entries
+- Recommended: 1,000–3,000 entries
+
+# 8. Model Training Procedure
+
+Training workflow:
+1. Prepare labeled dataset
+2. Split dataset (80% training, 20% testing)
+3. Apply preprocessing
+4. Perform feature extraction
+5. Train ML model
+6. Evaluate model performance
+
+# 9. Evaluation Metrics
+
+- Accuracy
+- Precision
+- Recall
+- F1-Score
+- Confusion Matrix
+
+# 10. Sentiment Classification Logic
+
+Output Categories:
+- Positive = Customer satisfied
+- Neutral = Average experience
+- Negative = Customer dissatisfied
+
+# 11. Database Design Recommendation
+
+Suggested Table: feedback_sentiments
+
+Fields:
+- sentiment_id
+- customer_id
+- feedback_text
+- predicted_sentiment
+- confidence_score
+- created_at
+
+# 12. Dashboard Analytics Features
+
+The dashboard should display:
+- Total Positive Reviews
+- Total Negative Reviews
+- Customer Satisfaction Rate
+- Sentiment Trend Graphs
+- Most Common Complaint Keywords
+- Service Satisfaction Rankings
+
+# 13. Integration with Existing System
+
+Integrations:
+- Booking System
+- CRM Module
+- Promotion Engine
+- Analytics Dashboard
+
+# 14. Recommended Future Enhancements
+
+Possible future enhancements:
+- Multilingual sentiment analysis
+- Emotion detection
+- Voice review analysis
+- Real-time chatbot feedback analysis
+- Deep learning NLP models
+- Recommendation systems
+
+# 15. Recommended Chapter III Addition
+
+Suggested subsection title:
+“Development of the NLP-Based Sentiment Analysis Module”
+
+The proponents should discuss:
+- NLP preprocessing
+- Dataset preparation
+- ML algorithm selection
+- Training process
+- Evaluation metrics
+- System integration architecture
+
+# Dean’s Technical Recommendation
+
+Recommended implementation for a BSIT capstone project:
+- NLP Library: NLTK
+- Vectorization: TF-IDF
+- ML Algorithm: Logistic Regression
+- Deployment: Python API + Laravel Integration
+
+This approach is academically valid, technically feasible, resource-efficient, and defendable during final presentation and oral defense.

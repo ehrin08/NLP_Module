@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\FeedbackSentiment;
+use App\Services\FeedbackFilterService;
 use Carbon\CarbonPeriod;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -31,11 +34,14 @@ class DashboardController extends Controller
         'Service Quality' => ['rushed', 'bitin', 'pressure', 'poor', 'bad', 'masakit', 'careless', 'relaxing'],
     ];
 
-    public function __invoke(): View
+    public function __invoke(Request $request, FeedbackFilterService $filters): View|JsonResponse
     {
+        $activeFilters = $filters->fromRequest($request);
         $sentiments = ['Positive', 'Neutral', 'Negative'];
+        $baseQuery = $filters->apply(FeedbackSentiment::query(), $activeFilters, false);
+        $latestLimit = max(4, min(20, (int) $request->integer('latest_limit', 8)));
 
-        $counts = FeedbackSentiment::query()
+        $counts = (clone $baseQuery)
             ->select('predicted_sentiment', DB::raw('COUNT(*) as total'))
             ->groupBy('predicted_sentiment')
             ->pluck('total', 'predicted_sentiment');
@@ -44,12 +50,13 @@ class DashboardController extends Controller
             ->mapWithKeys(fn (string $sentiment) => [$sentiment => (int) ($counts[$sentiment] ?? 0)])
             ->all();
 
-        $period = CarbonPeriod::create(now()->subDays(13)->startOfDay(), now()->startOfDay());
+        [$trendStart, $trendEnd] = $filters->trendRange($activeFilters);
+        $period = CarbonPeriod::create($trendStart->copy()->startOfDay(), $trendEnd->copy()->startOfDay());
         $labels = collect($period)->map(fn (Carbon $date) => $date->format('M d'))->values();
 
-        $trendRows = FeedbackSentiment::query()
+        $trendRows = (clone $baseQuery)
             ->selectRaw('DATE(created_at) as review_date, predicted_sentiment, COUNT(*) as total')
-            ->where('created_at', '>=', now()->subDays(13)->startOfDay())
+            ->whereBetween('created_at', [$trendStart, $trendEnd])
             ->groupBy('review_date', 'predicted_sentiment')
             ->orderBy('review_date')
             ->get()
@@ -65,28 +72,30 @@ class DashboardController extends Controller
             return [$sentiment => $data->values()];
         });
 
-        $latestReviews = FeedbackSentiment::query()
-            ->latest()
-            ->limit(8)
+        $latestReviews = $filters->apply(FeedbackSentiment::query(), $activeFilters)
+            ->limit($latestLimit)
             ->get();
 
-        $negativeReviews = FeedbackSentiment::query()
+        $negativeReviews = (clone $baseQuery)
             ->where('predicted_sentiment', 'Negative')
             ->latest()
             ->limit(250)
             ->get(['feedback_text']);
 
-        $allTrendReviews = FeedbackSentiment::query()
-            ->where('created_at', '>=', now()->subDays(13)->startOfDay())
-            ->get(['feedback_text', 'predicted_sentiment', 'created_at']);
+        $languageTrend = $activeFilters['language'] ?: 'taglish';
+        $languageTrendRows = $filters->applyLanguage((clone $baseQuery), $languageTrend)
+            ->selectRaw('DATE(created_at) as review_date, predicted_sentiment, COUNT(*) as total')
+            ->whereBetween('created_at', [$trendStart, $trendEnd])
+            ->groupBy('review_date', 'predicted_sentiment')
+            ->orderBy('review_date')
+            ->get()
+            ->groupBy(fn ($row) => $row->review_date.'|'.$row->predicted_sentiment);
 
-        $taglishTrend = collect($sentiments)->mapWithKeys(function (string $sentiment) use ($period, $allTrendReviews) {
-            $data = collect($period)->map(function (Carbon $date) use ($sentiment, $allTrendReviews) {
-                return $allTrendReviews
-                    ->filter(fn (FeedbackSentiment $review) => $review->predicted_sentiment === $sentiment)
-                    ->filter(fn (FeedbackSentiment $review) => $review->created_at->isSameDay($date))
-                    ->filter(fn (FeedbackSentiment $review) => $this->isTaglishText($review->feedback_text))
-                    ->count();
+        $languageTrendData = collect($sentiments)->mapWithKeys(function (string $sentiment) use ($period, $languageTrendRows) {
+            $data = collect($period)->map(function (Carbon $date) use ($sentiment, $languageTrendRows) {
+                $key = $date->format('Y-m-d').'|'.$sentiment;
+
+                return (int) optional($languageTrendRows->get($key)?->first())->total;
             });
 
             return [$sentiment => $data->values()];
@@ -97,7 +106,7 @@ class DashboardController extends Controller
             ? round($summary['Positive'] / $summary['Negative'], 2).':1'
             : ($summary['Positive'] > 0 ? $summary['Positive'].':0' : '0:0');
 
-        return view('dashboard.index', [
+        $payload = [
             'summary' => $summary,
             'positiveNegativeRatio' => $positiveNegativeRatio,
             'positiveShare' => $ratioTotal > 0 ? round(($summary['Positive'] / $ratioTotal) * 100, 1) : 0,
@@ -105,11 +114,30 @@ class DashboardController extends Controller
             'pieData' => array_values($summary),
             'trendLabels' => $labels,
             'trendData' => $trend,
-            'taglishTrendData' => $taglishTrend,
+            'taglishTrendData' => $languageTrendData,
+            'languageTrendTitle' => ($activeFilters['language'] ? FeedbackFilterService::LANGUAGES[$activeFilters['language']] : 'Taglish Reviews').' Sentiment Trend',
             'negativeTaglishWords' => $this->topNegativeTaglishWords($negativeReviews),
             'frequentComplaints' => $this->frequentComplaints($negativeReviews),
             'latestReviews' => $latestReviews,
-        ]);
+            'filters' => $activeFilters,
+            'filterOptions' => [
+                'sentiments' => FeedbackFilterService::SENTIMENTS,
+                'datePresets' => FeedbackFilterService::DATE_PRESETS,
+                'services' => FeedbackSentiment::query()->distinct()->orderBy('service_name')->pluck('service_name'),
+                'sorts' => FeedbackFilterService::SORTS,
+                'languages' => FeedbackFilterService::LANGUAGES,
+            ],
+            'latestLimit' => $latestLimit,
+        ];
+
+        if ($this->isAsync($request)) {
+            return response()->json([
+                'html' => view('dashboard.partials.content', $payload)->render(),
+                'url' => $request->fullUrl(),
+            ]);
+        }
+
+        return view('dashboard.index', $payload);
     }
 
     private function topNegativeTaglishWords($negativeReviews): array
@@ -156,8 +184,15 @@ class DashboardController extends Controller
 
     private function tokenize(string $text): array
     {
-        preg_match_all('/[a-zñ]+/i', strtolower($text), $matches);
+        preg_match_all('/[a-zÃ±]+/i', strtolower($text), $matches);
 
         return $matches[0] ?? [];
+    }
+
+    private function isAsync(Request $request): bool
+    {
+        return $request->expectsJson()
+            || $request->ajax()
+            || $request->header('X-Requested-With') === 'XMLHttpRequest';
     }
 }

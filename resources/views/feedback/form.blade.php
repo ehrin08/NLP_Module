@@ -1,3 +1,9 @@
+@php
+    $feedback = $feedback ?? null;
+    $buttonText = $buttonText ?? 'Save';
+    $showCancel = $showCancel ?? true;
+@endphp
+
 @csrf
 
 <div class="grid gap-5 md:grid-cols-2">
@@ -11,9 +17,7 @@
             required
             class="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
         >
-        @error('customer_name')
-            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-        @enderror
+        <p class="mt-2 text-sm text-red-600" data-field-error="customer_name">@error('customer_name'){{ $message }}@enderror</p>
     </div>
 
     <div>
@@ -26,9 +30,7 @@
             required
             class="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
         >
-        @error('service_name')
-            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-        @enderror
+        <p class="mt-2 text-sm text-red-600" data-field-error="service_name">@error('service_name'){{ $message }}@enderror</p>
     </div>
 
     <div>
@@ -45,9 +47,7 @@
                 </option>
             @endfor
         </select>
-        @error('rating')
-            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-        @enderror
+        <p class="mt-2 text-sm text-red-600" data-field-error="rating">@error('rating'){{ $message }}@enderror</p>
     </div>
 
     <div class="md:col-span-2">
@@ -59,20 +59,18 @@
             required
             class="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
         >{{ old('feedback_text', $feedback->feedback_text ?? '') }}</textarea>
-        @error('feedback_text')
-            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-        @enderror
+        <p class="mt-2 text-sm text-red-600" data-field-error="feedback_text">@error('feedback_text'){{ $message }}@enderror</p>
     </div>
 </div>
 
 <div class="mt-6 flex flex-wrap items-center gap-3">
-    <button type="submit" class="rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800">
+    <button type="submit" class="rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-70" data-submit-label>
         {{ $buttonText }}
     </button>
 
-    @auth
+    @if ($showCancel && auth()->check())
         <a href="{{ route('feedback.index') }}" class="rounded-lg border border-zinc-300 px-5 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-100">
             Cancel
         </a>
-    @endauth
+    @endif
 </div>

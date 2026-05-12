@@ -8,6 +8,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-zinc-50 text-zinc-900 antialiased">
+    <x-toast-stack />
+
     <header class="border-b border-zinc-200 bg-white">
         <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
             <a href="{{ route('feedback.create') }}" class="text-lg font-semibold tracking-tight text-zinc-950">
